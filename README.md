@@ -1,105 +1,212 @@
+# MiniCpp Interpreter
+
+Ein Interpreter für eine C++-ähnliche Sprache, entwickelt als Projekt für den Compilerbau-Kurs.
+
 ---
-title: Student Support Code Template
+
+## Features
+
+| Feature | Beispiel |
+|---------|----------|
+| Datentypen | `int`, `bool`, `char`, `string`, `void` |
+| Variablen | `int x = 5;` |
+| Referenzen | `int& ref = x;` |
+| Operatoren | `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `&&`, `||` |
+| Kontrollfluss | `if`, `else`, `while`, `return` |
+| Funktionen | `int add(int a, int b) { return a + b; }` |
+| Klassen | Felder, Methoden, Konstruktoren |
+| Vererbung | `class D : public B { }` |
+| Virtual | Dynamischer Dispatch mit `virtual` |
+| Ausgabe | `print_int()`, `print_bool()`, `print_char()`, `print_string()` |
+
 ---
 
-<!-- pandoc -s -f markdown -t markdown --columns=94  README.md -->
+## Architektur
 
-# Compiler Sample Project
+```
+C++ Code → Lexer → Parser → AST → Semantische Analyse → Interpreter → Ausgabe
+```
 
-Dies ist ein Starter-Projekt für die Übungsaufgaben in "Compilerbau" (Bachelor). Es existiert
-eine [Gradle-Konfiguration](build.gradle) (Java-Projekt), [JUnit](https://junit.org/junit5/)
-und [ANTLR](https://www.antlr.org/) sind auch bereits eingebunden. Das Projekt zeigt die
-Einbindung der ANTLR-Grammatiken. Zusätzlich existieren [Beispielgrammatiken](src/main/antlr/)
-für einige Übungsblätter.
+| Komponente | Datei | Aufgabe |
+|------------|-------|---------|
+| Grammatik | `MiniCpp.g4` | Definiert die Sprachregeln |
+| Lexer/Parser | (ANTLR generiert) | Zerlegt und prüft den Code |
+| AST | `ast/*.java` | Baumstruktur des Codes |
+| ASTBuilder | `ASTBuilder.java` | Parse-Tree → AST |
+| SymbolTable | `semantic/SymbolTable.java` | Verwaltet Variablen und Scopes |
+| SemanticAnalyzer | `semantic/SemanticAnalyzer.java` | Typprüfung |
+| Interpreter | `interpreter/Interpreter.java` | Führt den Code aus |
+| REPL | `Main.java` | Interaktive Konsole |
+
+---
+
+## Projektstruktur
+
+```
+src/main/
+├── antlr/
+│   └── MiniCpp.g4              # Grammatik
+│
+├── java/
+│   ├── Main.java               # REPL
+│   ├── ASTBuilder.java         # Parse-Tree → AST
+│   │
+│   ├── ast/                    # AST-Klassen
+│   │   ├── ASTNode.java
+│   │   ├── Program.java
+│   │   ├── Type.java
+│   │   ├── decl/               # Deklarationen
+│   │   ├── expr/               # Ausdrücke
+│   │   └── stmt/               # Statements
+│   │
+│   ├── semantic/               # Semantische Analyse
+│   │   ├── Symbol.java
+│   │   ├── SymbolTable.java
+│   │   ├── SemanticAnalyzer.java
+│   │   └── SemanticException.java
+│   │
+│   └── interpreter/            # Interpreter
+│       ├── Interpreter.java
+│       ├── ReturnException.java
+│       └── RuntimeValue.java
+│
+└── resources/cpp/tests/        # Testdateien
+    ├── pos/                    # Positive Tests
+    └── neg/                    # Negative Tests
+```
+
+---
 
 ## Installation
 
-Öffnen Sie den Ordner `sample_project` als neues Java-Projekt "mit existierenden Quellen" in
-[IntelliJ](https://www.jetbrains.com/idea/). Achten Sie dabei darauf, dass Sie als "Build
-Model" entsprechend "Gradle" auswählen, damit die Konfiguration übernommen wird.
+### Voraussetzungen
 
-Sie benötigen ein installiertes [Java SE Development Kit **25 LTS**](https://jdk.java.net/25/).
-Achten Sie darauf, dass dieses auch wirklich von IntelliJ verwendet wird (zu finden unter
-*Projekt-Einstellungen*).
+- Java SE Development Kit 21+ ([Download](https://jdk.java.net/21/))
+- IntelliJ IDEA (empfohlen) oder andere IDE
 
-Weitere Software ist nicht notwendig. ANTLR und JUnit werden über das Build-Skript automatisch
-als Dependency heruntergeladen und eingebunden. Es empfiehlt sich dennoch, zusätzlich das
-[ANTLR-Plugin für IntelliJ](https://plugins.jetbrains.com/plugin/7358-antlr-v4) zu
-installieren - damit können Sie in der IDE interaktiv mit den Grammatiken experimentieren und
-müssen nicht immer das gesamte Programm kompilieren und laufen lassen.
+### Setup
 
-Sie können natürlich auch eine beliebige andere IDE oder sogar einen einfachen Editor
-verwenden.
+1. Projekt in IntelliJ öffnen: `File → Open → Projektordner auswählen`
+2. Als Gradle-Projekt importieren
+3. Gradle JVM auf Java 21 setzen
+
+---
+
+## Verwendung
+
+### Bauen
+
+```bash
+./gradlew build
+```
+
+### Starten
+
+```bash
+./gradlew run
+```
+
+### REPL verwenden
+
+```
+MiniCpp Interpreter - REPL
+Eingabe 'exit' zum Beenden
+
+>>> int main() { print_int(42); return 0; }
+42
+main() returned: 0
+
+>>> exit
+Auf Wiedersehen!
+```
+
+### Datei ausführen
+
+```bash
+./gradlew run --args="pfad/zur/datei.cpp"
+```
+
+---
+
+## Beispiele
+
+### Variablen und Arithmetik
+```cpp
+int main() {
+    int x = 10;
+    int y = 3;
+    print_int(x + y);    // 13
+    print_int(x * y);    // 30
+    return 0;
+}
+```
+
+### While-Schleife
+```cpp
+int main() {
+    int i = 0;
+    while (i < 5) {
+        print_int(i);
+        i = i + 1;
+    }
+    return 0;
+}
+// Ausgabe: 01234
+```
+
+### Funktionen
+```cpp
+int factorial(int n) {
+    if (n <= 1) { return 1; }
+    return n * factorial(n - 1);
+}
+
+int main() {
+    print_int(factorial(5));  // 120
+    return 0;
+}
+```
+
+### Klassen
+```cpp
+class Counter {
+public:
+    int val;
+    Counter() { val = 0; }
+    void inc() { val = val + 1; }
+    int get() { return val; }
+}
+
+int main() {
+    Counter c;
+    c.inc();
+    c.inc();
+    print_int(c.get());  // 2
+    return 0;
+}
+```
+
+---
 
 ## Gradle-Tasks
 
-### Aufräumen
+| Task | Beschreibung |
+|------|--------------|
+| `./gradlew build` | Projekt bauen |
+| `./gradlew run` | Interpreter starten |
+| `./gradlew clean` | Build-Dateien löschen |
+| `./gradlew spotlessApply` | Code formatieren |
+| `./gradlew check` | Tests ausführen |
+| `./gradlew generateGrammarSource` | ANTLR-Grammatik neu generieren |
 
-`./gradlew clean`
+---
 
-### Starten des Programms
+## Team
 
-Konfigurieren Sie Ihr Programm im [`build.gradle`](build.gradle) in der Variablen `mainClass`.
+3er-Team Projekt für Compilerbau (IFM5)
 
-Danach können Sie das Programm kompilieren und starten über `./gradlew run`.
+---
 
-### Formatieren
+## Lizenz
 
-Ihre Java-Sourcen können Sie mit `./gradlew spotlessApply` formatieren.
-
-### Testen
-
-`./gradlew check`
-
-### Grammatik neu übersetzen
-
-Die ANTLR-Grammatiken werden im Ordner [`src/main/antlr`](src/main/antlr/) erwartet. Sie
-werden standardmäßig beim Bauen der Applikation übersetzt, also beispielsweise beim Ausführen
-von `./gradlew run` oder `./gradlew build`.
-
-Die dabei generierten Dateien werden im Build-Ordner
-[`build/generated-src/antlr/main/`](build/generated-src/antlr/main/) abgelegt und sind über
-die Gradle-Konfiguration automatisch im Classpath verfügbar.
-
-Falls Ihre Grammatik in einem Package liegt (beispielsweise
-[`HelloPackage.g4`](src/main/antlr/my/pkg/HelloPackage.g4) im Package `my.pkg`), dann wird für
-die generierten Sourcen im Build-Ordner automatisch dieses Package mit angelegt. Damit später
-die Einbindung in Ihr Programm funktioniert, sollten Sie entsprechend in der Grammatik über
-die Direktive `@header` die entsprechende Package-Deklaration mit in die generierten Sourcen
-hineingenerieren lassen.
-
-Wenn Sie die Grammatik einzeln übersetzen wollen, können Sie dies mit
-`./gradlew generateGrammarSource` tun.
-
-> [!TIP]
-> **Hinweis**: Sie werden in Ihrem eigenen Code Abhängigkeiten zu (bzw. Importe von)
-> generierten Klassen haben. IntelliJ wird deshalb beim Start entsprechende Fehler anzeigen -
-> die generierten Klassen existieren ja in einem frischen Projekt noch nicht! Diese werden
-> erst beim Build (`./gradlew build`) bzw. beim expliziten Aufruf von
-> `./gradlew generateGrammarSource` erzeugt. Danach sind dann auch die Fehlermeldungen weg ...
-> Bei einem `./gradlew clean` werden auch die generierten Sourcen mit entfernt, weshalb es
-> danach bis zum ersten Build oder Run wieder Fehlermeldung bzgl. der ANTLR-Dateien gibt.
-
-> [!IMPORTANT]
-> **Hinweis**: Sorgen Sie dafür, dass Ihre IDE tatsächlich auch die Projekteinstellungen von
-> Gradle übernommen hat und auch mit Gradle baut!
->
-> Check, ob die **Projekteinstellungen** in IntelliJ passen:
-> 1. Menü `File > Project Structure > Project Settings > Project` sollte für Ihr Projekt als
-> SDK ein "Java 25" zeigen: ![](img/ij-projectsettings-sdk.png)
-> 2. Menü `File > Project Structure > Project Settings > Libraries` sollte für Ihr Projekt
-> Jar-Files für ANTLR4 zeigen: ![](img/ij-projectsettings-libs.png)
->
-> Check, ob **IntelliJ mit Gradle baut**:
-> Menü `File > Settings > Build, Execution, Deployment > Build Tools > Gradle` sollte auf
-> Gradle umgestellt sein: ![](img/ij-setting-gradlebuild.png)
-> Unter "Build & Run" sollte "Gradle" ausgewählt sein, die "Distribution" sollte auf "Wrapper"
-> stehen, und als "Gradle JVM" sollte die für das Projekt verwendete JVM eingestellt sein,
-> d.h. aktuell Java 25.
-
-## License
-
-This [work](https://github.com/Compiler-CampusMinden/student-support-code-template) by
-[Carsten Gips](https://github.com/cagix) and
-[contributors](https://github.com/Compiler-CampusMinden/student-support-code-template/graphs/contributors)
-is licensed under [MIT](LICENSE.md).
+Basiert auf dem [Student Support Code Template](https://github.com/Compiler-CampusMinden/student-support-code-template) von Carsten Gips.
