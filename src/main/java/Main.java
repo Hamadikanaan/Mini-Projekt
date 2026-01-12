@@ -1,11 +1,13 @@
 import ast.*;
 import ast.decl.*;
 import ast.stmt.*;
+import interpreter.*;
 import java.io.*;
 import java.nio.file.*;
 import java.util.Scanner;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import semantic.*;
 
 public class Main {
   public static void main(String[] args) {
@@ -125,10 +127,12 @@ public class Main {
       printAST(program);
 
       // TODO: Später SemanticAnalyzer und Interpreter hinzufügen
-      // SemanticAnalyzer analyzer = new SemanticAnalyzer();
-      // analyzer.analyze(program);
-      // Interpreter interpreter = new Interpreter();
-      // interpreter.execute(program);
+      SymbolTable symbolTable = new SymbolTable();
+      SemanticAnalyzer analyzer = new SemanticAnalyzer(symbolTable);
+      analyzer.analyze(program);
+
+      Interpreter interpreter = new Interpreter(symbolTable);
+      interpreter.execute(program);
 
     } catch (Exception e) {
       System.err.println("Fehler: " + e.getMessage());

@@ -19,14 +19,6 @@ public class Interpreter {
   public Object execute(Program program) {
     this.program = program;
 
-    // Registriere alle Klassen und Funktionen
-    for (ClassDecl cls : program.getClasses()) {
-      symbolTable.declareClass(cls);
-    }
-    for (FunctionDecl func : program.getFunctions()) {
-      symbolTable.declareFunction(func);
-    }
-
     // Suche und führe main() aus
     FunctionDecl mainFunc = program.getMainFunction();
     if (mainFunc != null) {
