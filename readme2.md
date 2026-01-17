@@ -1,6 +1,6 @@
 # MiniCpp Interpreter
 
-Ein Interpreter für eine C++-ähnliche Sprache, entwickelt als Projekt für den Compilerbau-Kurs (IFM5).
+Ein Interpreter für eine C++-ähnliche Sprache, entwickelt als Projekt für den Compilerbau
 
 ## Was ist das?
 
