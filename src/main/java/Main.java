@@ -10,6 +10,9 @@ import org.antlr.v4.runtime.tree.*;
 import semantic.*;
 
 public class Main {
+  // Persistente SymbolTable für Sitzungs-Scope
+  private static SymbolTable symbolTable = new SymbolTable();
+
   public static void main(String[] args) {
     Scanner scanner = new Scanner(System.in);
 
@@ -33,7 +36,6 @@ public class Main {
     boolean multiLine = false;
 
     while (true) {
-      // Prompt anzeigen
       if (multiLine) {
         System.out.print("...> ");
       } else {
@@ -42,16 +44,21 @@ public class Main {
 
       String line = scanner.nextLine();
 
-      // Exit-Befehl
       if (!multiLine && line.trim().equals("exit")) {
         System.out.println("Auf Wiedersehen!");
         break;
+      }
+      // Reset-Befehl
+      if (!multiLine && line.trim().equals("reset")) {
+        symbolTable = new SymbolTable();
+        System.out.println("REPL zurückgesetzt.");
+        inputBuffer.setLength(0);
+        continue;
       }
 
       inputBuffer.append(line).append("\n");
       String input = inputBuffer.toString();
 
-      // Prüfen ob Eingabe vollständig ist (einfache Heuristik)
       int braces = countChar(input, '{') - countChar(input, '}');
       int parens = countChar(input, '(') - countChar(input, ')');
 
@@ -60,7 +67,6 @@ public class Main {
         continue;
       }
 
-      // Eingabe verarbeiten
       if (!input.trim().isEmpty()) {
         parseAndRun(input, true);
       }
@@ -74,7 +80,6 @@ public class Main {
 
   private static void parseAndRun(String input, boolean isRepl) {
     try {
-      // Lexer erstellen
       MiniCppLexer lexer = new MiniCppLexer(CharStreams.fromString(input));
       lexer.removeErrorListeners();
       lexer.addErrorListener(
@@ -92,7 +97,6 @@ public class Main {
             }
           });
 
-      // Parser erstellen
       CommonTokenStream tokens = new CommonTokenStream(lexer);
       MiniCppParser parser = new MiniCppParser(tokens);
       parser.removeErrorListeners();
@@ -111,26 +115,22 @@ public class Main {
             }
           });
 
-      // Parsen
       ParseTree tree = parser.program();
 
-      // Bei Fehlern abbrechen
       if (parser.getNumberOfSyntaxErrors() > 0) {
         return;
       }
 
-      // AST bauen
       ASTBuilder builder = new ASTBuilder();
       Program program = (Program) builder.visit(tree);
 
-      // AST ausgeben (zum Testen)
       printAST(program);
 
-      // TODO: Später SemanticAnalyzer und Interpreter hinzufügen
-      SymbolTable symbolTable = new SymbolTable();
+      // Semantische Analyse mit persistenter SymbolTable
       SemanticAnalyzer analyzer = new SemanticAnalyzer(symbolTable);
       analyzer.analyze(program);
 
+      // Interpreter mit gleicher SymbolTable
       Interpreter interpreter = new Interpreter(symbolTable);
       interpreter.execute(program);
 
@@ -142,8 +142,6 @@ public class Main {
 
   private static void printAST(Program program) {
     System.out.println("\n=== AST ===");
-
-    // Klassen ausgeben
     for (ClassDecl cls : program.getClasses()) {
       System.out.println("Klasse: " + cls.getName());
       if (cls.hasBaseClass()) {
@@ -173,8 +171,6 @@ public class Main {
                 + " params)");
       }
     }
-
-    // Funktionen ausgeben
     for (FunctionDecl func : program.getFunctions()) {
       System.out.println(
           "Funktion: "
@@ -186,7 +182,6 @@ public class Main {
               + " params)");
       printStatements(func.getBody().getStatements(), "  ");
     }
-
     System.out.println("=== Ende AST ===\n");
   }
 
@@ -202,8 +197,7 @@ public class Main {
                 + v.getName()
                 + (v.hasInitializer() ? " = ..." : ""));
       } else if (stmt instanceof ReturnStmt) {
-        ReturnStmt r = (ReturnStmt) stmt;
-        System.out.println(indent + "Return" + (r.hasValue() ? " ..." : ""));
+        System.out.println(indent + "Return" + (((ReturnStmt) stmt).hasValue() ? " ..." : ""));
       } else if (stmt instanceof IfStmt) {
         IfStmt i = (IfStmt) stmt;
         System.out.println(indent + "If (...)");

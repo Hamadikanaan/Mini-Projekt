@@ -15,14 +15,18 @@ public class SemanticAnalyzer {
   }
 
   public void analyze(Program program) {
-    // Pass 1: Alle Klassen registrieren
+    // Pass 1: Neue Klassen registrieren (ohne Fehler bei bereits existierenden)
     for (ClassDecl cls : program.getClasses()) {
-      symbolTable.declareClass(cls);
+      if (!symbolTable.tryDeclareClass(cls)) {
+        throw new SemanticException("Klasse '" + cls.getName() + "' bereits definiert");
+      }
     }
 
-    // Pass 2: Alle Funktionen registrieren
+    // Pass 2: Neue Funktionen registrieren
     for (FunctionDecl func : program.getFunctions()) {
-      symbolTable.declareFunction(func);
+      if (!symbolTable.tryDeclareFunction(func)) {
+        throw new SemanticException("Funktion '" + func.getName() + "' bereits definiert");
+      }
     }
 
     // Pass 3: Klassen analysieren
@@ -252,19 +256,33 @@ public class SemanticAnalyzer {
   }
 
   private Type analyzeFunctionCall(FunctionCallExpr expr) {
-    FunctionDecl func =
-        symbolTable.lookupFunction(expr.getFunctionName(), expr.getArguments().size());
-    if (func == null) {
-      // Prüfe auf Built-in Funktionen
-      if (isBuiltinFunction(expr.getFunctionName())) {
-        return new Type("void");
+    String funcName = expr.getFunctionName();
+    int argCount = expr.getArguments().size();
+
+    // Built-in Funktionen
+    if (isBuiltinFunction(funcName)) {
+      for (Expression arg : expr.getArguments()) {
+        analyzeExpression(arg);
       }
-      // Prüfe ob es ein Konstruktor ist
-      ClassDecl cls = symbolTable.lookupClass(expr.getFunctionName());
-      if (cls != null) {
-        return new Type(cls.getName());
+      return new Type("void");
+    }
+
+    // Konstruktor prüfen
+    ClassDecl cls = symbolTable.lookupClass(funcName);
+    if (cls != null) {
+      for (Expression arg : expr.getArguments()) {
+        analyzeExpression(arg);
       }
-      throw new SemanticException("Funktion '" + expr.getFunctionName() + "' nicht gefunden");
+      return new Type(cls.getName());
+    }
+
+    // Prüfe auf mehrdeutige Überladung
+    java.util.List<FunctionDecl> matches = symbolTable.findMatchingFunctions(funcName, argCount);
+    if (matches.size() > 1) {
+      throw new SemanticException("Mehrdeutiger Funktionsaufruf: '" + funcName + "'");
+    }
+    if (matches.isEmpty()) {
+      throw new SemanticException("Funktion '" + funcName + "' nicht gefunden");
     }
 
     // Argumente analysieren
@@ -272,20 +290,84 @@ public class SemanticAnalyzer {
       analyzeExpression(arg);
     }
 
-    return func.getReturnType();
+    return matches.get(0).getReturnType();
   }
 
   private Type analyzeMethodCall(MethodCallExpr expr) {
-    analyzeExpression(expr.getObject());
+    Type objType = analyzeExpression(expr.getObject());
+
+    // Klasse finden
+    ClassDecl cls = symbolTable.lookupClass(objType.getTypeName());
+    if (cls == null) {
+      throw new SemanticException("Typ '" + objType.getTypeName() + "' ist keine Klasse");
+    }
+
+    // Methode suchen (inkl. Basisklasse)
+    MethodDecl method = findMethod(cls, expr.getMethodName(), expr.getArguments().size());
+    if (method == null) {
+      throw new SemanticException(
+          "Methode '"
+              + expr.getMethodName()
+              + "' nicht gefunden in Klasse '"
+              + cls.getName()
+              + "'");
+    }
+
+    // Argumente analysieren
     for (Expression arg : expr.getArguments()) {
       analyzeExpression(arg);
     }
-    return new Type("void"); // Vereinfacht
+
+    return method.getReturnType();
+  }
+
+  private MethodDecl findMethod(ClassDecl cls, String name, int argCount) {
+    for (MethodDecl method : cls.getMethods()) {
+      if (method.getName().equals(name) && method.getParameters().size() == argCount) {
+        return method;
+      }
+    }
+    if (cls.hasBaseClass()) {
+      ClassDecl baseClass = symbolTable.lookupClass(cls.getBaseClass());
+      if (baseClass != null) {
+        return findMethod(baseClass, name, argCount);
+      }
+    }
+    return null;
   }
 
   private Type analyzeMemberAccess(MemberAccessExpr expr) {
-    analyzeExpression(expr.getObject());
-    return new Type("int"); // Vereinfacht
+    Type objType = analyzeExpression(expr.getObject());
+
+    // Klasse finden
+    ClassDecl cls = symbolTable.lookupClass(objType.getTypeName());
+    if (cls == null) {
+      throw new SemanticException("Typ '" + objType.getTypeName() + "' ist keine Klasse");
+    }
+
+    // Feld suchen (inkl. Basisklasse)
+    FieldDecl field = findField(cls, expr.getMemberName());
+    if (field == null) {
+      throw new SemanticException(
+          "Feld '" + expr.getMemberName() + "' nicht gefunden in Klasse '" + cls.getName() + "'");
+    }
+
+    return field.getType();
+  }
+
+  private FieldDecl findField(ClassDecl cls, String name) {
+    for (FieldDecl field : cls.getFields()) {
+      if (field.getName().equals(name)) {
+        return field;
+      }
+    }
+    if (cls.hasBaseClass()) {
+      ClassDecl baseClass = symbolTable.lookupClass(cls.getBaseClass());
+      if (baseClass != null) {
+        return findField(baseClass, name);
+      }
+    }
+    return null;
   }
 
   private boolean isLValue(Expression expr) {

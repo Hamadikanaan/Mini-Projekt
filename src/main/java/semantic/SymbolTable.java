@@ -1,5 +1,6 @@
 package semantic;
 
+import ast.Type;
 import ast.decl.ClassDecl;
 import ast.decl.FunctionDecl;
 import java.util.HashMap;
@@ -81,9 +82,12 @@ public class SymbolTable {
     sb.append("(");
     for (int i = 0; i < func.getParameters().size(); i++) {
       if (i > 0) sb.append(",");
-      sb.append(func.getParameters().get(i).getType().toString());
+      Type t = func.getParameters().get(i).getType();
+      sb.append(t.getTypeName());
+      if (t.isReference()) sb.append("&");
     }
     sb.append(")");
+    System.out.println("DEBUG Signatur: " + sb.toString());
     return sb.toString();
   }
 
@@ -112,5 +116,33 @@ public class SymbolTable {
 
   public Map<String, ClassDecl> getAllClasses() {
     return classes;
+  }
+
+  // Nur registrieren wenn noch nicht vorhanden
+  public boolean tryDeclareClass(ClassDecl cls) {
+    if (classes.containsKey(cls.getName())) {
+      return false;
+    }
+    classes.put(cls.getName(), cls);
+    return true;
+  }
+
+  public boolean tryDeclareFunction(FunctionDecl func) {
+    String signature = getFunctionSignature(func);
+    if (functions.containsKey(signature)) {
+      return false;
+    }
+    functions.put(signature, func);
+    return true;
+  }
+
+  public java.util.List<FunctionDecl> findMatchingFunctions(String name, int argCount) {
+    java.util.List<FunctionDecl> matches = new java.util.ArrayList<>();
+    for (FunctionDecl func : functions.values()) {
+      if (func.getName().equals(name) && func.getParameters().size() == argCount) {
+        matches.add(func);
+      }
+    }
+    return matches;
   }
 }
