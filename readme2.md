@@ -123,58 +123,7 @@ src/main/
 └── resources/cpp/tests/       # Testdateien
 ```
 
-
-## Kurs
-
-Compilerbau (IFM5) – Wintersemester 2025/26
 ```
 
 ---
 
-## Präsentation (5 Minuten)
-
-### Folie 1: Einleitung (30 Sekunden)
-
-> "Unser Projekt ist ein MiniCpp Interpreter. Er kann eine vereinfachte Version von C++ lesen und direkt ausführen – ohne zu kompilieren."
-
-### Folie 2: Architektur (1 Minute)
-
-> "Der Code durchläuft 5 Schritte:
-> 1. **Lexer** – zerlegt den Code in Tokens, also einzelne Wörter
-> 2. **Parser** – prüft die Grammatik und baut einen Baum
-> 3. **ASTBuilder** – vereinfacht den Baum zu einem AST
-> 4. **SemanticAnalyzer** – prüft Typen und Variablen
-> 5. **Interpreter** – führt den Code aus
->
-> Die Grammatik haben wir mit ANTLR definiert, der Rest ist in Java."
-
-### Folie 3: Features (1 Minute)
-
-> "Was kann unser Interpreter?
-> - Alle Grundtypen: int, bool, char, string
-> - Variablen und Referenzen
-> - if-else und while-Schleifen
-> - Funktionen mit Überladung und Rekursion
-> - Klassen mit Feldern und Methoden
-> - Vererbung und virtual für Polymorphie
-> - Eine interaktive REPL"
-
-### Folie 4: Live-Demo (2 Minuten)
-
-**Demo 1:** Einfache Rechnung
-```
->>> int x = 5;
->>> print_int(x * 2);
-10
-```
-
-**Demo 2:** Funktion
-```
->>> int add(int a, int b) { return a + b; }
->>> print_int(add(3, 4));
-7
-```
-
-**Demo 3:** Datei laden
-```
-.\gradlew run --args="src\main\resources\cpp\tests\pos\GOLD01_basics.cpp"
