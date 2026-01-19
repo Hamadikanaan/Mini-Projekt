@@ -7,6 +7,7 @@ import ast.stmt.*;
 import java.util.List;
 import semantic.Symbol;
 import semantic.SymbolTable;
+import ast.expr.IdentifierExpr;
 
 public class Interpreter {
   private SymbolTable symbolTable;
@@ -28,28 +29,36 @@ public class Interpreter {
     return null;
   }
 
-  private Object executeFunction(FunctionDecl func, List<Object> args) {
-    symbolTable.enterScope();
+    private Object executeFunction(FunctionDecl func, List<Object> args) {
+        symbolTable.enterScope();
 
-    // Parameter binden
-    for (int i = 0; i < func.getParameters().size(); i++) {
-      Parameter param = func.getParameters().get(i);
-      Symbol symbol = new Symbol(param.getName(), param.getType());
-      symbol.setValue(args.get(i));
-      symbolTable.declareVariable(symbol);
+        // Parameter binden
+        for (int i = 0; i < func.getParameters().size(); i++) {
+            Parameter param = func.getParameters().get(i);
+            Symbol symbol = new Symbol(param.getName(), param.getType());
+
+            if (param.getType().isReference() && args.get(i) instanceof Symbol) {
+                // Referenz-Parameter: verknüpfe mit Original-Symbol
+                symbol.setReferenceTo((Symbol) args.get(i));
+            } else {
+                // Normaler Parameter: kopiere Wert
+                symbol.setValue(args.get(i));
+            }
+
+            symbolTable.declareVariable(symbol);
+        }
+
+        // Body ausführen
+        try {
+            executeBlock(func.getBody());
+        } catch (ReturnException e) {
+            symbolTable.exitScope();
+            return e.getValue();
+        }
+
+        symbolTable.exitScope();
+        return null;
     }
-
-    // Body ausführen
-    try {
-      executeBlock(func.getBody());
-    } catch (ReturnException e) {
-      symbolTable.exitScope();
-      return e.getValue();
-    }
-
-    symbolTable.exitScope();
-    return null;
-  }
 
   private Object executeMethod(RuntimeValue object, MethodDecl method, List<Object> args) {
     symbolTable.enterScope();
@@ -308,51 +317,66 @@ public class Interpreter {
     return value;
   }
 
-  private Object evaluateFunctionCall(FunctionCallExpr expr) {
-    String funcName = expr.getFunctionName();
+    private Object evaluateFunctionCall(FunctionCallExpr expr) {
+        String funcName = expr.getFunctionName();
 
-    // Built-in Funktionen
-    if (funcName.equals("print_int")) {
-      Object arg = evaluate(expr.getArguments().get(0));
-      System.out.print(toInt(arg));
-      return null;
-    }
-    if (funcName.equals("print_bool")) {
-      Object arg = evaluate(expr.getArguments().get(0));
-      System.out.print(toBoolean(arg) ? "true" : "false");
-      return null;
-    }
-    if (funcName.equals("print_char")) {
-      Object arg = evaluate(expr.getArguments().get(0));
-      System.out.print((char) arg);
-      return null;
-    }
-    if (funcName.equals("print_string")) {
-      Object arg = evaluate(expr.getArguments().get(0));
-      System.out.print(String.valueOf(arg));
-      return null;
-    }
+        // Built-in Funktionen
+        if (funcName.equals("print_int")) {
+            Object arg = evaluate(expr.getArguments().get(0));
+            System.out.print(toInt(arg));
+            return null;
+        }
+        if (funcName.equals("print_bool")) {
+            Object arg = evaluate(expr.getArguments().get(0));
+            System.out.print(toBoolean(arg) ? "true" : "false");
+            return null;
+        }
+        if (funcName.equals("print_char")) {
+            Object arg = evaluate(expr.getArguments().get(0));
+            System.out.print((char) arg);
+            return null;
+        }
+        if (funcName.equals("print_string")) {
+            Object arg = evaluate(expr.getArguments().get(0));
+            System.out.print(String.valueOf(arg));
+            return null;
+        }
 
-    // Konstruktor-Aufruf prüfen
-    ClassDecl cls = symbolTable.lookupClass(funcName);
-    if (cls != null) {
-      return createObject(cls, expr.getArguments());
-    }
+        // Konstruktor-Aufruf prüfen
+        ClassDecl cls = symbolTable.lookupClass(funcName);
+        if (cls != null) {
+            return createObject(cls, expr.getArguments());
+        }
 
-    // Normale Funktion
-    FunctionDecl func = symbolTable.lookupFunction(funcName, expr.getArguments().size());
-    if (func == null) {
-      throw new RuntimeException("Funktion '" + funcName + "' nicht gefunden");
-    }
+        // Normale Funktion
+        FunctionDecl func = symbolTable.lookupFunction(funcName, expr.getArguments().size());
+        if (func == null) {
+            throw new RuntimeException("Funktion '" + funcName + "' nicht gefunden");
+        }
 
-    // Argumente auswerten
-    List<Object> args = new java.util.ArrayList<>();
-    for (Expression arg : expr.getArguments()) {
-      args.add(evaluate(arg));
-    }
+        // Argumente auswerten - Referenzen bekommen das Symbol
+        List<Object> args = new java.util.ArrayList<>();
+        for (int i = 0; i < expr.getArguments().size(); i++) {
+            Expression argExpr = expr.getArguments().get(i);
+            Parameter param = func.getParameters().get(i);
 
-    return executeFunction(func, args);
-  }
+            if (param.getType().isReference()) {
+                // Referenz-Parameter: Symbol übergeben
+                if (argExpr instanceof IdentifierExpr) {
+                    String varName = ((IdentifierExpr) argExpr).getName();
+                    Symbol symbol = symbolTable.lookupVariable(varName);
+                    args.add(symbol);
+                } else {
+                    throw new RuntimeException("Referenz-Parameter braucht LValue");
+                }
+            } else {
+                // Normaler Parameter: Wert übergeben
+                args.add(evaluate(argExpr));
+            }
+        }
+
+        return executeFunction(func, args);
+    }
 
   private Object evaluateMethodCall(MethodCallExpr expr) {
     Object obj = evaluate(expr.getObject());

@@ -1,0 +1,252 @@
+## Präsentation (5 Minuten)
+
+### Folie 1: Einleitung (30 Sekunden)
+
+> "Unser Projekt ist ein MiniCpp Interpreter. Er kann eine vereinfachte Version von C++ lesen und direkt ausführen – ohne zu kompilieren."
+
+### Folie 2: Architektur (1 Minute)
+
+> "Der Code durchläuft 5 Schritte:
+> 1. **Lexer** – zerlegt den Code in Tokens, also einzelne Wörter
+> 2. **Parser** – prüft die Grammatik und baut einen Baum
+> 3. **ASTBuilder** – vereinfacht den Baum zu einem AST
+> 4. **SemanticAnalyzer** – prüft Typen und Variablen
+> 5. **Interpreter** – führt den Code aus
+>
+> Die Grammatik haben wir mit ANTLR definiert, der Rest ist in Java."
+
+### Folie 3: Features (1 Minute)
+
+> "Was kann unser Interpreter?
+> - Alle Grundtypen: int, bool, char, string
+> - Variablen und Referenzen
+> - if-else und while-Schleifen
+> - Funktionen mit Überladung und Rekursion
+> - Klassen mit Feldern und Methoden
+> - Vererbung und virtual für Polymorphie
+> - Eine interaktive REPL"
+
+### Folie 4: Live-Demo (2 Minuten)
+
+**Demo 1:** Einfache Rechnung
+```
+>>> int x = 5;
+>>> print_int(x * 2);
+10
+```
+
+**Demo 2:** Funktion
+```
+>>> int add(int a, int b) { return a + b; }
+>>> print_int(add(3, 4));
+7
+```
+
+**Demo 3:** Datei laden
+```
+.\gradlew run --args="src\main\resources\cpp\tests\pos\GOLD01_basics.cpp"
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+
+
+
+Teil 1: Einleitung (1 Minute)
+
+"Hallo, wir präsentieren unser Projekt: einen MiniCpp Interpreter.
+Was macht er? Er liest C++-ähnlichen Code und führt ihn direkt aus – ohne zu kompilieren.
+Warum? Um zu verstehen, wie ein Compiler funktioniert: vom Quellcode bis zur Ausführung.
+Unser Interpreter unterstützt:
+
+Variablen und Datentypen
+Funktionen mit Überladung
+Klassen mit Vererbung
+Eine interaktive REPL"
+
+
+
+Teil 2: Architektur (2 Minuten)
+
+"Der Code durchläuft 5 Schritte:"
+
+Zeige im Code oder an der Tafel:
+Quellcode → Lexer → Parser → AST → Semantische Analyse → Interpreter → Ausgabe
+
+"1. Lexer – zerlegt den Code in Tokens.
+Aus int x = 5; werden: INT, IDENTIFIER(x), EQUALS, NUMBER(5), SEMICOLON
+2. Parser – prüft die Grammatik und baut einen Parse-Tree.
+Er erkennt: Das ist eine Variablendeklaration.
+3. ASTBuilder – vereinfacht den Parse-Tree zu einem AST (Abstract Syntax Tree).
+4. SemanticAnalyzer – prüft:
+
+Ist die Variable schon definiert?
+Stimmen die Typen?
+Ist die linke Seite einer Zuweisung ein LValue?
+
+5. Interpreter – führt den AST aus und gibt das Ergebnis aus."
+
+
+Teil 3: Grammatik mit ANTLR (1 Minute)
+Öffne MiniCpp.g4 in der IDE:
+
+"Die Grammatik haben wir mit ANTLR geschrieben. Hier ein Beispiel:"
+
+antlrstatement
+    : varDecl
+    | ifStmt
+    | whileStmt
+    | returnStmt
+    | exprStmt
+    | block
+    ;
+```
+
+> "ANTLR generiert daraus automatisch den Lexer und Parser in Java.
+> Wir mussten also nur die Regeln definieren – den Rest macht ANTLR."
+
+---
+
+### Teil 4: AST (1 Minute)
+
+**Öffne `ast/` Ordner:**
+
+> "Der AST hat verschiedene Knotentypen:"
+```
+ast/
+├── expr/          # Ausdrücke: BinaryExpr, FunctionCallExpr, ...
+├── stmt/          # Statements: IfStmt, WhileStmt, ReturnStmt, ...
+├── decl/          # Deklarationen: FunctionDecl, ClassDecl, ...
+└── Type.java      # Datentypen
+
+"Jeder Knoten ist eine Java-Klasse. Der ASTBuilder wandelt den Parse-Tree in diese Struktur um."
+
+
+Teil 5: Semantische Analyse (1,5 Minuten)
+Öffne SemanticAnalyzer.java:
+
+"Der SemanticAnalyzer macht 4 Passes:"
+
+java// Pass 1: Klassen registrieren
+// Pass 2: Funktionen registrieren
+// Pass 3: Klassen analysieren
+// Pass 4: Funktionen analysieren
+
+"Er prüft zum Beispiel:"
+
+Zeige analyzeVarDecl:
+java// Variable schon definiert?
+if (symbolTable.isVariableDeclaredInCurrentScope(name)) {
+    throw new SemanticException("Variable bereits definiert");
+}
+
+// Referenz braucht Initialisierung
+if (type.isReference() && !hasInitializer) {
+    throw new SemanticException("Referenz muss initialisiert werden");
+}
+
+"Alle Fehler werden als SemanticException geworfen und dem Benutzer angezeigt."
+
+
+Teil 6: Interpreter (1,5 Minuten)
+Öffne Interpreter.java:
+
+"Der Interpreter ist ein Tree-Walking Interpreter. Er geht durch den AST und führt jeden Knoten aus."
+
+Zeige evaluate Methode:
+javaprivate Object evaluate(Expression expr) {
+    if (expr instanceof IntLiteral) {
+        return ((IntLiteral) expr).getValue();
+    } else if (expr instanceof BinaryExpr) {
+        return evaluateBinary((BinaryExpr) expr);
+    } else if (expr instanceof FunctionCallExpr) {
+        return evaluateFunctionCall((FunctionCallExpr) expr);
+    }
+    // ...
+}
+Zeige evaluateBinary:
+javacase ADD:
+    return toInt(left) + toInt(right);
+case MUL:
+    return toInt(left) * toInt(right);
+
+"Für jeden Operator gibt es eine Regel. Das Ergebnis wird berechnet und zurückgegeben."
+
+
+Teil 7: REPL (1 Minute)
+Öffne Main.java:
+
+"Die REPL ist eine interaktive Konsole."
+
+javawhile (true) {
+    System.out.print(">>> ");
+    String line = scanner.nextLine();
+    
+    if (line.equals("exit")) break;
+    if (line.equals("reset")) {
+        symbolTable = new SymbolTable();
+        continue;
+    }
+    
+    parseAndRun(input, true);
+}
+```
+
+> "Der Sitzungs-Scope bleibt erhalten – Variablen und Funktionen bleiben zwischen Eingaben verfügbar.
+> Mit `reset` kann man die Sitzung zurücksetzen."
+
+---
+
+### Teil 8: Live-Demo (2 Minuten)
+
+**Starte den Interpreter:**
+```
+.\gradlew run
+```
+
+**Demo 1: Einfache Rechnung**
+```
+>>> int x = 5;
+>>> int y = 3;
+>>> print_int(x + y);
+8
+```
+
+**Demo 2: Funktion**
+```
+>>> int add(int a, int b) { return a + b; }
+>>> print_int(add(10, 20));
+30
+```
+
+**Demo 3: Rekursion**
+```
+>>> reset
+>>> int factorial(int n) { if (n <= 1) { return 1; } return n * factorial(n - 1); } int main() { print_int(factorial(5)); return 0; }
+120
+```
+
+**Demo 4: Datei laden**
+```
+.\gradlew run --args="src\main\resources\cpp\tests\pos\GOLD01_basics.cpp"
+
+"Ausgabe: 12falseAfoo2 – alle Tests bestanden."
+
+
+Teil 9: Fazit (30 Sekunden)
+
+"Was haben wir gelernt?
+
+Wie ein Compiler aufgebaut ist
+Wie Lexer und Parser zusammenarbeiten
+Wie man einen AST baut und analysiert
+Wie ein Interpreter Code ausführt
+
+Das Projekt zeigt die wichtigsten Konzepte des Compilerbaus in der Praxis.
+Vielen Dank! Gibt es Fragen?"
