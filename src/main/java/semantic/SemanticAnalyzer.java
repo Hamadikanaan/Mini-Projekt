@@ -227,11 +227,24 @@ public class SemanticAnalyzer {
   }
 
   private Type analyzeIdentifier(IdentifierExpr expr) {
-    Symbol symbol = symbolTable.lookupVariable(expr.getName());
-    if (symbol == null) {
-      throw new SemanticException("Variable '" + expr.getName() + "' nicht definiert");
+    String name = expr.getName();
+
+    // 1) variables locales / paramètres
+    Symbol symbol = symbolTable.lookupVariable(name);
+    if (symbol != null) {
+      return symbol.getType();
     }
-    return symbol.getType();
+
+    // 2) si on est dans une classe: chercher un champ (incl. base class)
+    if (currentClass != null) {
+      FieldDecl field = findField(currentClass, name);
+      if (field != null) {
+        return field.getType();
+      }
+    }
+
+    // 3) sinon erreur
+    throw new SemanticException("Variable '" + name + "' nicht definiert");
   }
 
   private Type analyzeBinary(BinaryExpr expr) {
